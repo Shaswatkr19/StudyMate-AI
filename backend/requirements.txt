@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+python-multipart
+pypdf
+pdfplumber
+youtube-transcript-api
+google-generativeai
