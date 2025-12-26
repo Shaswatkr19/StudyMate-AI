@@ -17,6 +17,7 @@ const NotebookLMStudyTool = ({ onBack }) => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   
+  
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -139,44 +140,38 @@ etc.`,
   };
 
   const generateStudyGuide = async () => {
-    if (!studyMaterial) {
-      alert('Please upload study material first!');
-      return;
-    }
-
     setIsGeneratingGuide(true);
+  
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("http://127.0.0.1:8000/study-guide", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: `Create a comprehensive study guide with:
-1. Key Concepts (3-5 main points)
-2. Quick Summary (2-3 sentences)
-3. Exam Tips (3-4 practical tips)
-4. Practice Questions (3 questions)
-5. Memory Techniques
-
-Format in clear sections with bullet points.`,
-          messages: [
-            { 
-              role: "user", 
-              content: `Create a study guide for: ${studyMaterial.name}` 
-            }
-          ],
-        })
       });
-
-      const data = await response.json();
-      setStudyGuide(data.content[0].text);
-      setActiveTab('guide');
-    } catch (error) {
-      console.error('Error generating guide:', error);
-      alert('Failed to generate study guide. Please try again.');
+  
+      const data = await res.json();
+  
+      console.log("RAW API RESPONSE 👉", data);
+  
+      const raw = typeof data === "string" ? data : data.guide;
+  
+      let parsedGuide;
+  
+      try {
+        const cleaned = raw
+          .replace(/```json/g, "")
+          .replace(/```/g, "")
+          .trim();
+  
+        parsedGuide = JSON.parse(cleaned);
+      } catch {
+        parsedGuide = { raw_text: raw };
+      }
+  
+      setStudyGuide(parsedGuide);
+      setActiveTab("guide");
+  
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate study guide");
     } finally {
       setIsGeneratingGuide(false);
     }
@@ -218,7 +213,7 @@ Format in clear sections with bullet points.`,
         ...prev,
         {
           role: "assistant",
-          content: "❌ AI couldn’t answer. Please try again.",
+          content: "❌ AI couldn't answer. Please try again.",
         },
       ]);
     } finally {
@@ -803,12 +798,56 @@ Format in clear sections with bullet points.`,
               
               {studyGuide ? (
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 md:p-6 border border-green-200">
-                    <div className="prose prose-sm md:prose max-w-none">
-                      <div className="whitespace-pre-wrap text-sm md:text-base text-gray-800 leading-relaxed">
-                        {studyGuide}
-                      </div>
+                  <div className="space-y-6">
+
+                  {/* SUMMARY */}
+                  {studyGuide && studyGuide.key_concepts ? (
+                    <div className="space-y-6">
+
+                        {/* KEY CONCEPTS */}
+                        {Array.isArray(studyGuide.key_concepts) && (
+                          <section>
+                            <h3 className="text-lg font-bold text-green-700 mb-2">🔑 Key Concepts</h3>
+                            <ul className="list-disc pl-6 space-y-1">
+                              {studyGuide.key_concepts.map((item, i) => (
+                                <li key={i} className="text-gray-700">{item}</li>
+                              ))}
+                            </ul>
+                          </section>
+                        )}
+
+                        {/* EXAM TIPS */}
+                        {Array.isArray(studyGuide.exam_tips) && (
+                          <section>
+                            <h3 className="text-lg font-bold text-green-700 mb-2">🎯 Exam Tips</h3>
+                            <ul className="list-disc pl-6 space-y-1">
+                              {studyGuide.exam_tips.map((tip, i) => (
+                                <li key={i} className="text-gray-700">{tip}</li>
+                              ))}
+                            </ul>
+                          </section>
+                        )}  
+
+                        {/* PRACTICE QUESTIONS */}
+                        {Array.isArray(studyGuide.practice_questions) && (
+                          <section>
+                            <h3 className="text-lg font-bold text-green-700 mb-2">📝 Practice Questions</h3>
+                            <ol className="list-decimal pl-6 space-y-2">
+                              {studyGuide.practice_questions.map((q, i) => (
+                                <li key={i} className="text-gray-700">{q}</li>
+                              ))}
+                            </ol>
+                          </section>
+                        )}  
+
                     </div>
+                  ) : (
+                    /* 🔁 FALLBACK (AI ne JSON nahi diya) */
+                    <div className="whitespace-pre-wrap text-gray-800">
+                      {studyGuide.raw_text || JSON.stringify(studyGuide, null, 2)}
+                    </div>
+                  )}
+
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -832,9 +871,11 @@ Format in clear sections with bullet points.`,
                     <button
                       onClick={() => {
                         const element = document.createElement('a');
-                        const file = new Blob([studyGuide], {type: 'text/plain'});
+                        const file = new Blob(
+                          [JSON.stringify(studyGuide, null, 2)], 
+                          {type: 'application/json'});
                         element.href = URL.createObjectURL(file);
-                        element.download = 'study-guide.txt';
+                        element.download = 'study-guide.json';
                         element.click();
                       }}
                       className="bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-all flex items-center justify-center gap-2"

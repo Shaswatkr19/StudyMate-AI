@@ -144,22 +144,33 @@ Teacher:
 # =========================
 @app.post("/study-guide")
 async def study_guide():
-    if not STUDY_TEXT:
-        return {"error": "No study material uploaded yet"}
+    if not STUDY_TEXT.strip():
+        return {"error": "No study material available"}
 
     prompt = f"""
-Create a study guide with:
-- Key concepts
-- Summary
-- Exam tips
-- Practice questions
+You are a teacher.
 
-Based on:
-{STUDY_TEXT}
+From the study material below, create a structured study guide in STRICT JSON format only.
+
+Format:
+{{
+  "key_concepts": [],
+  "summary": "",
+  "exam_tips": [],
+  "practice_questions": []
+}}
+
+Rules:
+- Simple language
+- Exam-oriented
+- No extra text outside JSON
+
+Study material:
+{STUDY_TEXT[:6000]}
 """
 
-    response = model.generate_content(prompt)
-
-    return {
-        "guide": response.text
-    }
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return {"error": str(e)}
