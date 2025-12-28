@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BookOpen, MessageSquare, Video, Send, Loader2, PlayCircle, FileText, Sparkles, Upload, Mic, Download, Brain, List, Zap, CheckCircle2, Menu, X, ArrowLeft, Play, Pause, Square } from 'lucide-react';
+import { API_URL } from '../config';
 
 const NotebookLMStudyTool = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState('chat');
@@ -54,7 +55,7 @@ const NotebookLMStudyTool = ({ onBack }) => {
     try {
       setIsLoading(true);
   
-      const res = await fetch("http://127.0.0.1:8000/upload-pdf", {
+      const res = await fetch(`${API_URL}/upload-pdf`, {
         method: "POST",
         body: formData,
       });
@@ -90,7 +91,7 @@ const NotebookLMStudyTool = ({ onBack }) => {
     try {
       console.log("Sending video URL:", videoUrl);
       
-      const res = await fetch("http://127.0.0.1:8000/api/analyze/youtube", {
+      const res = await fetch(`${API_URL}/api/analyze/youtube`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ youtube_url: videoUrl }),
@@ -179,7 +180,7 @@ const NotebookLMStudyTool = ({ onBack }) => {
     try {
       console.log("Requesting audio dialogue...");
       
-      const res = await fetch("http://127.0.0.1:8000/audio-dialogue", {
+      const res = await fetch(`${API_URL}/audio-dialogue`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -288,7 +289,7 @@ const NotebookLMStudyTool = ({ onBack }) => {
     setIsGeneratingGuide(true);
   
     try {
-      const res = await fetch("http://127.0.0.1:8000/study-guide", {
+      const res = await fetch(`${API_URL}/study-guide`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -345,7 +346,7 @@ const NotebookLMStudyTool = ({ onBack }) => {
     setIsLoading(true);
   
     try {
-      const response = await fetch("http://127.0.0.1:8000/ask", {
+      const response = await fetch(`${API_URL}/ask`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
