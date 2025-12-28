@@ -3,9 +3,14 @@ uvicorn
 python-multipart
 pypdf
 pdfplumber
-youtube-transcript-api
+
 google-generativeai
 python-dotenv
+
+yt-dlp
+youtube-transcript-api
+requests
+
 pytesseract
 pdf2image
 Pillow
