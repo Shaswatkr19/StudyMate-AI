@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pypdf import PdfReader
-from google import genai  # ✅ CHANGED
+import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 from pydantic import BaseModel
@@ -13,8 +13,8 @@ from routes.study_routes import router as study_router
 # =========================
 load_dotenv()
 
-# ✅ NEW WAY
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 # =========================
 # APP
@@ -45,7 +45,6 @@ class AskRequest(BaseModel):
 # UTILS
 # =========================
 def extract_pdf_text(file: UploadFile) -> str:
-    """Extract text from PDF using pypdf"""
     reader = PdfReader(file.file)
     text = ""
     for page in reader.pages:
@@ -59,18 +58,15 @@ def extract_pdf_text(file: UploadFile) -> str:
 # =========================
 @app.post("/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...)):
-    """Upload PDF and extract text with OCR fallback"""
     global STUDY_TEXT
 
     file_bytes = await file.read()
     file.file.seek(0)
 
-    # Normal PDF text extraction
     text = extract_pdf_text(file)
 
-    # OCR fallback if no text found
     if not text.strip():
-        print("⚠️ No text found via pypdf, using OCR...")
+        print("⚠️ Using OCR fallback")
         text = extract_text_with_ocr(file_bytes)
 
     if not text.strip():
@@ -78,11 +74,13 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     STUDY_TEXT = text
 
-    # ✅ Generate summary with NEW API
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=f"Explain this chapter in simple teacher style:\n{text[:6000]}"
-    )
+    prompt = f"""
+Explain this chapter in simple teacher style:
+
+{text[:6000]}
+"""
+
+    response = model.generate_content(prompt)
 
     return {
         "summary": response.text
@@ -93,7 +91,6 @@ async def upload_pdf(file: UploadFile = File(...)):
 # =========================
 @app.post("/ask")
 async def ask_ai(req: AskRequest):
-    """Ask questions about uploaded study material"""
     if not STUDY_TEXT:
         return {"error": "No study material uploaded yet"}
 
@@ -109,11 +106,7 @@ Student question:
 Explain clearly with examples.
 """
 
-    # ✅ NEW WAY
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=prompt
-    )
+    response = model.generate_content(prompt)
 
     return {
         "answer": response.text
@@ -124,29 +117,24 @@ Explain clearly with examples.
 # =========================
 @app.post("/audio-dialogue")
 async def audio_dialogue():
-    """Generate teacher-student dialogue for audio playback"""
     if not STUDY_TEXT:
         return {"error": "No study material uploaded yet"}
 
     prompt = f"""
-Create a 2-minute teacher-student dialogue
-based on this content:
-
-{STUDY_TEXT}
+Create a 2-minute teacher-student dialogue.
 
 Format:
-Teacher: [explanation]
-Student: [question or comment]
-Teacher: [response]
-Student: [follow-up]
-Teacher: [conclusion]
+Teacher: explanation
+Student: question
+Teacher: response
+Student: follow-up
+Teacher: conclusion
+
+Content:
+{STUDY_TEXT[:5000]}
 """
 
-    # ✅ NEW WAY
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=prompt
-    )
+    response = model.generate_content(prompt)
 
     return {
         "dialogue": response.text
@@ -157,49 +145,36 @@ Teacher: [conclusion]
 # =========================
 @app.post("/study-guide")
 async def study_guide():
-    """Generate structured study guide in JSON format"""
     if not STUDY_TEXT.strip():
         return {"error": "No study material available"}
 
     prompt = f"""
-You are a teacher.
+Create a STRICT JSON study guide.
 
-From the study material below, create a structured study guide in STRICT JSON format only.
-
-Format:
+Format ONLY JSON:
 {{
-  "key_concepts": ["concept 1", "concept 2", "concept 3"],
-  "summary": "brief summary here",
-  "exam_tips": ["tip 1", "tip 2", "tip 3"],
-  "practice_questions": ["question 1", "question 2", "question 3"]
+  "key_concepts": ["concept 1", "concept 2"],
+  "summary": "short summary",
+  "exam_tips": ["tip 1", "tip 2"],
+  "practice_questions": ["q1", "q2"]
 }}
 
 Rules:
-- Simple language
-- Exam-oriented
-- No extra text outside JSON
-- No markdown code blocks
+- No markdown
+- No explanation text
 
 Study material:
 {STUDY_TEXT[:6000]}
 """
 
-    try:
-        # ✅ NEW WAY
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt
-        )
-        return response.text
-    except Exception as e:
-        return {"error": str(e)}
+    response = model.generate_content(prompt)
+    return response.text
 
 # =========================
 # HEALTH CHECK
 # =========================
 @app.get("/")
 async def root():
-    """API health check"""
     return {
         "status": "running",
         "message": "StudyMate AI Backend",

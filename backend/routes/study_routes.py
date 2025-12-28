@@ -1,16 +1,18 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from google import genai
+import google.generativeai as genai
 import os
 from dotenv import load_dotenv 
 import yt_dlp
 from urllib.parse import urlparse, parse_qs
 
-router = APIRouter()
+router = APIRouter() 
 
 load_dotenv()
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+# client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 # =========================
 # MODELS
@@ -142,10 +144,10 @@ Transcript:
 {transcript_text[:4000]}
 """
     
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=prompt
-    )
+    
+    response = model.generate_content(prompt)
+
+
     return response.text
 
 def analyze_study_text(text: str) -> str:
