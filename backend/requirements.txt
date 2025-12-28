@@ -6,3 +6,6 @@ pdfplumber
 youtube-transcript-api
 google-generativeai
 python-dotenv
+pytesseract
+pdf2image
+Pillow
