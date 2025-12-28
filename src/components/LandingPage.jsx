@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowRight, BookOpen, Brain, Sparkles, Mic, Video, FileText, Zap, CheckCircle, PlayCircle } from 'lucide-react';
+import { ArrowRight, BookOpen, Brain, Sparkles, Mic, Video, FileText, Zap, CheckCircle, PlayCircle, MessageSquare, Volume2 } from 'lucide-react';
 
 const LandingPage = ({ onGetStarted }) => {
+  const [showDemo, setShowDemo] = useState(false);
 
   return (
     <div className="min-h-screen bg-white">
@@ -63,11 +64,135 @@ const LandingPage = ({ onGetStarted }) => {
                 Try StudyMate AI
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
-              <button className="text-gray-700 px-8 py-4 rounded-full text-lg font-medium hover:bg-gray-100 transition-all flex items-center gap-2">
+              <button 
+                onClick={() => setShowDemo(!showDemo)}
+                className="text-gray-700 px-8 py-4 rounded-full text-lg font-medium hover:bg-gray-100 transition-all flex items-center gap-2 border-2 border-gray-200"
+              >
                 <PlayCircle className="w-5 h-5" />
-                Watch Demo
+                {showDemo ? 'Hide Demo' : 'Watch Demo'}
               </button>
             </div>
+
+            {/* Interactive Demo Preview */}
+            {showDemo && (
+              <div className="mt-12 max-w-4xl mx-auto animate-fadeIn">
+                <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+                  {/* Mock App Interface */}
+                  <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-3 flex items-center gap-3">
+                    <div className="flex gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    </div>
+                    <div className="flex-1 text-center">
+                      <div className="bg-gray-700 rounded-lg px-4 py-1 inline-block">
+                        <span className="text-gray-300 text-sm">studymate-ai.app</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-8 bg-gradient-to-br from-blue-50 to-indigo-50">
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {/* Feature Preview 1 */}
+                      <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer group">
+                        <div className="flex items-start gap-4">
+                          <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-600 transition-all">
+                            <MessageSquare className="w-6 h-6 text-blue-600 group-hover:text-white transition-all" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-gray-900 mb-2">AI Chat Assistant</h4>
+                            <p className="text-sm text-gray-600 mb-3">Ask anything about your study material</p>
+                            <div className="bg-gray-100 rounded-lg p-3 text-xs text-gray-700">
+                              <div className="mb-2 font-medium">You: "Explain photosynthesis"</div>
+                              <div className="text-blue-600">AI: "Photosynthesis is the process..."</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Feature Preview 2 */}
+                      <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer group">
+                        <div className="flex items-start gap-4">
+                          <div className="bg-purple-100 p-3 rounded-lg group-hover:bg-purple-600 transition-all">
+                            <Volume2 className="w-6 h-6 text-purple-600 group-hover:text-white transition-all" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-gray-900 mb-2">Audio Learning</h4>
+                            <p className="text-sm text-gray-600 mb-3">Listen to AI-generated dialogues</p>
+                            <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse"></div>
+                                <span className="text-xs font-medium text-purple-900">Now Playing...</span>
+                              </div>
+                              <div className="h-1 bg-purple-200 rounded-full overflow-hidden">
+                                <div className="h-full bg-purple-600 w-1/3 animate-pulse"></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Feature Preview 3 */}
+                      <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer group">
+                        <div className="flex items-start gap-4">
+                          <div className="bg-green-100 p-3 rounded-lg group-hover:bg-green-600 transition-all">
+                            <FileText className="w-6 h-6 text-green-600 group-hover:text-white transition-all" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-gray-900 mb-2">Smart Study Guides</h4>
+                            <p className="text-sm text-gray-600 mb-3">Auto-generated comprehensive guides</p>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-xs text-gray-700">
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                                <span>Key Concepts Summary</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-700">
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                                <span>Practice Questions</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-700">
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                                <span>Exam Tips & Tricks</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Feature Preview 4 */}
+                      <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer group">
+                        <div className="flex items-start gap-4">
+                          <div className="bg-orange-100 p-3 rounded-lg group-hover:bg-orange-600 transition-all">
+                            <Video className="w-6 h-6 text-orange-600 group-hover:text-white transition-all" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-gray-900 mb-2">Video Analysis</h4>
+                            <p className="text-sm text-gray-600 mb-3">YouTube video summaries & insights</p>
+                            <div className="bg-gradient-to-r from-orange-100 to-red-100 rounded-lg p-3">
+                              <div className="aspect-video bg-gray-200 rounded-lg mb-2 flex items-center justify-center">
+                                <PlayCircle className="w-8 h-8 text-gray-400" />
+                              </div>
+                              <div className="text-xs text-gray-700 font-medium">Video: "Physics Explained"</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CTA in Demo */}
+                    <div className="mt-8 text-center">
+                      <button
+                        onClick={onGetStarted}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-full font-medium hover:shadow-lg transition-all inline-flex items-center gap-2"
+                      >
+                        Try These Features Now
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 max-w-3xl mx-auto">
@@ -302,6 +427,21 @@ const LandingPage = ({ onGetStarted }) => {
         
         .animation-delay-4000 {
           animation-delay: 4s;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out;
         }
       `}</style>
     </div>
