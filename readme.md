@@ -5,6 +5,14 @@ Transform any document into an interactive learning experience with AI-powered a
 
 StudyMate AI is an intelligent study companion that leverages advanced AI to help students learn more effectively. Upload your study materials, ask questions, and get instant, contextual answers powered by Claude AI.
 
+## 🌐 Live Demo
+
+**Frontend (User Application):** https://studymate-ai-shaswat.netlify.app/
+
+**Backend API:** https://studymate-ai-hy09.onrender.com
+
+Try the live application to experience all features including PDF upload, AI-powered Q&A, study guide generation, audio dialogue mode, and YouTube video analysis.
+
 ## ✨ Key Features
 
 ### 📚 Multi-Format Support
