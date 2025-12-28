@@ -3,14 +3,14 @@ from pydantic import BaseModel
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv 
-import yt_dlp
 from urllib.parse import urlparse, parse_qs
+import requests
+import re
 
 router = APIRouter() 
 
 load_dotenv()
 
-# client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-2.5-flash")
 
@@ -41,10 +41,10 @@ def extract_video_id(youtube_url: str) -> str:
     return None
 
 # =========================
-# YOUTUBE SERVICE (yt-dlp method)
+# YOUTUBE SERVICE - Direct Scraping
 # =========================
-def fetch_youtube_transcript(youtube_url: str, max_chars: int = 8000) -> dict:
-    """Fetch transcript from YouTube using yt-dlp"""
+def fetch_youtube_info(youtube_url: str) -> dict:
+    """Get video info directly using Google's timedtext API"""
     
     video_id = extract_video_id(youtube_url)
     
@@ -55,117 +55,145 @@ def fetch_youtube_transcript(youtube_url: str, max_chars: int = 8000) -> dict:
         }
     
     try:
-        ydl_opts = {
-            'skip_download': True,
-            'writesubtitles': True,
-            'writeautomaticsub': True,
-            'subtitleslangs': ['en', 'hi', 'en-US'],
-            'quiet': True,
-            'no_warnings': True
+        # Try to get captions from YouTube's timedtext API
+        caption_url = f"https://www.youtube.com/api/timedtext?v={video_id}&lang=en"
+        
+        response = requests.get(caption_url, timeout=10)
+        
+        if response.status_code == 200 and response.text.strip():
+            # Parse XML captions
+            import xml.etree.ElementTree as ET
+            try:
+                root = ET.fromstring(response.text)
+                texts = [elem.text for elem in root.findall('.//text') if elem.text]
+                
+                if texts:
+                    transcript = " ".join(texts)
+                    transcript = re.sub(r'\s+', ' ', transcript).strip()
+                    
+                    if len(transcript) > 8000:
+                        transcript = transcript[:8000] + "..."
+                    
+                    print(f"✅ Got captions for {video_id}")
+                    return {"success": True, "text": transcript}
+            except:
+                pass
+        
+        # If captions not available, get video page and extract description
+        page_url = f"https://www.youtube.com/watch?v={video_id}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(youtube_url, download=False)
+        page_response = requests.get(page_url, headers=headers, timeout=10)
+        
+        if page_response.status_code == 200:
+            # Extract video title and description from page
+            title_match = re.search(r'"title":"([^"]+)"', page_response.text)
+            desc_match = re.search(r'"shortDescription":"([^"]+)"', page_response.text)
             
-            # Try to get subtitles
-            subtitles = info.get('subtitles', {})
-            automatic_captions = info.get('automatic_captions', {})
+            content = []
+            if title_match:
+                content.append(f"Title: {title_match.group(1)}")
+            if desc_match:
+                desc = desc_match.group(1).replace('\\n', ' ')
+                content.append(f"Description: {desc}")
             
-            # Combine both subtitle sources
-            all_subs = {**automatic_captions, **subtitles}
-            
-            # Try English first
-            subtitle_text = None
-            for lang in ['en', 'en-US', 'en-GB', 'hi']:
-                if lang in all_subs:
-                    sub_list = all_subs[lang]
-                    if sub_list and len(sub_list) > 0:
-                        # Get the first available subtitle format
-                        sub_url = sub_list[0].get('url')
-                        if sub_url:
-                            # Download and parse subtitle content
-                            import requests
-                            from xml.etree import ElementTree
-                            
-                            response = requests.get(sub_url)
-                            if response.status_code == 200:
-                                # Parse XML subtitle
-                                try:
-                                    root = ElementTree.fromstring(response.content)
-                                    texts = [elem.text for elem in root.iter() if elem.text]
-                                    subtitle_text = " ".join(texts)
-                                    break
-                                except:
-                                    # Try as plain text
-                                    subtitle_text = response.text
-                                    break
-            
-            if not subtitle_text or not subtitle_text.strip():
+            if content:
+                text = " ".join(content)
+                text = re.sub(r'\s+', ' ', text).strip()
+                
+                print(f"✅ Got video info for {video_id}")
                 return {
-                    "success": False,
-                    "error": "No captions available"
+                    "success": True, 
+                    "text": text,
+                    "note": "Captions not available, using title and description"
                 }
-            
-            # Clean and limit text
-            subtitle_text = " ".join(subtitle_text.split())
-            if len(subtitle_text) > max_chars:
-                subtitle_text = subtitle_text[:max_chars] + "..."
-            
-            print(f"✅ Transcript fetched successfully for {video_id}")
-            return {
-                "success": True,
-                "text": subtitle_text
-            }
-            
-    except Exception as e:
-        error_msg = str(e)
-        print(f"❌ Transcript fetch failed for {video_id}: {error_msg}")
         
         return {
             "success": False,
-            "error": f"Could not fetch transcript: {error_msg}"
+            "error": "❌ No captions or info available for this video"
+        }
+        
+    except requests.Timeout:
+        return {
+            "success": False,
+            "error": "❌ Request timeout. Try again."
+        }
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return {
+            "success": False,
+            "error": f"❌ Could not fetch video info: {str(e)}"
         }
 
 # =========================
 # AI ANALYSIS
 # =========================
-def analyze_video_transcript(transcript_text: str) -> str:
-    """Analyze YouTube video transcript"""
-    prompt = f"""
-You are a study assistant analyzing a YouTube lecture.
+def analyze_video_content(content: str, has_captions: bool = True) -> str:
+    """Analyze video content"""
+    
+    if has_captions:
+        prompt = f"""
+Analyze this YouTube video transcript and provide:
 
-Provide:
-1. Short Overview (2-3 sentences)
-2. Key Concepts (bullet points)
-3. Important Topics
-4. Study Tips
+**📚 Overview**
+Write 2-3 sentences summarizing the video.
+
+**🔑 Key Topics Covered**
+List the main topics discussed (bullet points).
+
+**💡 Important Takeaways**
+What should viewers remember?
+
+**📝 Study Recommendations**
+How to use this video for learning?
 
 Transcript:
-{transcript_text[:4000]}
+{content[:5000]}
+"""
+    else:
+        prompt = f"""
+Based on this video's title and description, provide:
+
+**📚 What This Video Is About**
+Brief overview based on available info.
+
+**🔑 Expected Topics**
+What topics are likely covered.
+
+**💡 Note**
+Mention that full captions aren't available, so this is based on title/description.
+
+**📝 Recommendation**
+Suggest watching the video for complete understanding.
+
+Video Info:
+{content}
 """
     
-    
     response = model.generate_content(prompt)
-
-
     return response.text
 
 def analyze_study_text(text: str) -> str:
-    """Analyze plain text study material"""
+    """Analyze plain text"""
     prompt = f"""
-You are a study assistant.
+Analyze this study material:
 
-Provide:
-1. Overview
-2. Key Concepts
-3. Exam Tips
+**📚 Overview**
+Brief summary
 
-Study Material:
+**🔑 Key Concepts**
+Main points
+
+**🎯 Study Focus**
+What to prioritize
+
+Content:
 {text[:5000]}
 """
     
     response = model.generate_content(prompt)
-
     return response.text
 
 # =========================
@@ -175,53 +203,32 @@ Study Material:
 async def analyze_youtube(payload: YouTubeRequest):
     """Analyze YouTube video"""
     
-    result = fetch_youtube_transcript(payload.youtube_url)
+    result = fetch_youtube_info(payload.youtube_url)
     
     if result["success"]:
         try:
-            analysis = analyze_video_transcript(result["text"])
-            return {
-                "status": "success",
-                "analysis": analysis
-            }
+            has_captions = "note" not in result
+            analysis = analyze_video_content(result["text"], has_captions)
+            
+            if not has_captions:
+                analysis = f"ℹ️ **Note:** Full captions not available. Analysis based on title and description.\n\n{analysis}"
+            
+            return {"status": "success", "analysis": analysis}
         except Exception as e:
             print(f"❌ AI analysis failed: {e}")
-            return {
-                "status": "error",
-                "analysis": f"Transcript fetched but AI analysis failed: {str(e)}"
-            }
+            return {"status": "error", "analysis": f"Got video info but AI analysis failed: {str(e)}"}
     
-    # Error response
-    return {
-        "status": "error",
-        "analysis": f"""❌ Could not analyze this video.
-
-**Reason:** {result.get('error', 'Unknown error')}
-
-**💡 Suggestions:**
-- Try videos with captions enabled
-- Check if video is available in your region
-- Or upload PDF notes instead!"""
-    }
+    return {"status": "error", "analysis": result.get('error', 'Could not fetch video information')}
 
 @router.post("/analyze/text")
 async def analyze_text(payload: TextRequest):
-    """Analyze plain text study material"""
+    """Analyze text"""
     
     if not payload.text or len(payload.text.strip()) < 50:
-        return {
-            "status": "error",
-            "message": "Text too short (min 50 chars)"
-        }
+        return {"status": "error", "message": "Text too short (minimum 50 characters)"}
     
     try:
         analysis = analyze_study_text(payload.text)
-        return {
-            "status": "success",
-            "analysis": analysis
-        }
+        return {"status": "success", "analysis": analysis}
     except Exception as e:
-        return {
-            "status": "error",
-            "message": f"AI analysis failed: {str(e)}"
-        }
+        return {"status": "error", "message": f"Analysis failed: {str(e)}"}
