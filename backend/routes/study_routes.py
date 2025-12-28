@@ -164,10 +164,8 @@ Study Material:
 {text[:5000]}
 """
     
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=prompt
-    )
+    response = model.generate_content(prompt)
+
     return response.text
 
 # =========================
