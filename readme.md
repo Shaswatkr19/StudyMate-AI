@@ -216,4 +216,4 @@ Contributions are welcome! Please follow these steps:
 
 ---
 
-**Made with 😎 for students worldwide**
+**Made with ❤️ for students worldwide**
