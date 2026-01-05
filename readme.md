@@ -158,7 +158,7 @@ Go to the **Videos** tab:
 - **Tailwind CSS** - Utility-first styling
 
 ### AI & APIs
-- **Claude AI (Anthropic)** - Advanced language model
+- **Gemini AI** - Advanced language model
 - **YouTube Data API** - Video integration
 
 ### UI Components
